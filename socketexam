@@ -1,0 +1,84 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QGridLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QTabWidget
+from PyQt5.QtCore import QCoreApplication
+import csv
+import threading
+import socket
+
+
+host = 'localhost'
+port = 10000
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        widget = QWidget()
+        self.setCentralWidget(widget)
+        grid = QGridLayout()
+        widget.setLayout(grid)
+        self.resize(450,400)
+        self.__connection_active = False
+        self.client_socket = None
+
+        self.__serv = QLineEdit("localhost")
+        self.__port = QLineEdit("10000")
+        self.__commande = QLineEdit("5")
+        self.__serveur = QLabel('Serveur')
+        self.__prt = QLabel('Port')
+        self.__cli = QLabel('Client max')
+        self.__connection = QPushButton('Démarrage du serveur')
+        self.__connection.clicked.connect(self.__demarrage)
+        self.__quit = QPushButton('Quitter')
+        self.affichage = QTextEdit(self)
+        self.affichage.setReadOnly(True)
+
+        grid.addWidget(self.__serv, 1, 2)
+        grid.addWidget(self.__port, 2, 2)
+        grid.addWidget(self.__connection, 4, 1,1,4)
+        grid.addWidget(self.__cli, 3, 1)
+        grid.addWidget(self.__serveur, 1, 1)
+        grid.addWidget(self.__prt, 2, 1)
+        grid.addWidget(self.__quit, 6, 1,1,6)
+        grid.addWidget(self.affichage, 5,1,1,5)
+        grid.addWidget(self.__commande, 3, 2)
+
+    def __demarrage(self):
+        self.serv_socket = socket.socket()
+        self.serv_socket.bind((host, port))
+        self.serv_socket.listen(2)
+        self.__accept_thread = threading.Thread(target=self.__accept)
+
+    def __accept(self):
+        try:
+            if not self.__connection_active:
+                conn, address = self.serv_socket.accept()
+                print("Connection from: " + str(address))
+                while True:
+                    data = conn.recv(1024).decode()
+                    if not data:
+                        break
+                    print("from connected user: " + str(data))
+                    data = input(' -> ')
+                    conn.send(data.encode())
+                conn.close()
+            else :
+                self.affichage.append("Veuillez d'abbord vous déconnecter du server avant de lancer une nouvelle connection!")
+        except Exception as err:
+            self.affichage.append(f'Erreur lors de la connection vers le server!!!! {err}')
+
+
+    def __reception(self):
+        try:
+                data = self.client_socket.recv(1024).decode()
+                self.affichage.append(f"{data}")
+        except Exception as err:
+                self.affichage.append(f'erreur au niveau de la connection!!! {err}')
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    app.exec()
+
+
